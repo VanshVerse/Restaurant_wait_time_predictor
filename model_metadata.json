@@ -1,0 +1,118 @@
+{
+  "intercept": 17.048437,
+  "coefficients": {
+    "day_of_week": -0.064316,
+    "hour_of_day": 0.358392,
+    "party_size": 2.013957,
+    "tables_occupied": 1.252643,
+    "staff_on_duty": -1.49373,
+    "is_weekend": 1.295568,
+    "is_holiday": 0.651139,
+    "reservations_ahead": 2.547523,
+    "avg_service_time_min": 0.797959,
+    "weather_score": 0.669012,
+    "occupancy_pct": 1.252643
+  },
+  "scaler_mean": {
+    "day_of_week": 2.94375,
+    "hour_of_day": 16.01875,
+    "party_size": 5.517708,
+    "tables_occupied": 27.304167,
+    "staff_on_duty": 9.192708,
+    "is_weekend": 0.279167,
+    "is_holiday": 0.127083,
+    "reservations_ahead": 14.413542,
+    "avg_service_time_min": 59.645625,
+    "weather_score": 2.926042,
+    "occupancy_pct": 0.546083
+  },
+  "scaler_std": {
+    "day_of_week": 2.012193,
+    "hour_of_day": 3.783691,
+    "party_size": 2.842699,
+    "tables_occupied": 13.250518,
+    "staff_on_duty": 3.732647,
+    "is_weekend": 0.44859,
+    "is_holiday": 0.333066,
+    "reservations_ahead": 8.688883,
+    "avg_service_time_min": 17.346223,
+    "weather_score": 1.453354,
+    "occupancy_pct": 0.26501
+  },
+  "metrics": {
+    "MAE": 1.708,
+    "RMSE": 2.109,
+    "R2": 0.8108,
+    "CV_R2": 0.854
+  },
+  "features": [
+    "day_of_week",
+    "hour_of_day",
+    "party_size",
+    "tables_occupied",
+    "staff_on_duty",
+    "is_weekend",
+    "is_holiday",
+    "reservations_ahead",
+    "avg_service_time_min",
+    "weather_score",
+    "occupancy_pct"
+  ],
+  "feature_ranges": {
+    "day_of_week": {
+      "min": 0.0,
+      "max": 6.0,
+      "mean": 2.978
+    },
+    "hour_of_day": {
+      "min": 10.0,
+      "max": 22.0,
+      "mean": 16.023
+    },
+    "party_size": {
+      "min": 1.0,
+      "max": 10.0,
+      "mean": 5.476
+    },
+    "tables_occupied": {
+      "min": 5.0,
+      "max": 50.0,
+      "mean": 27.519
+    },
+    "staff_on_duty": {
+      "min": 3.0,
+      "max": 15.0,
+      "mean": 9.193
+    },
+    "is_weekend": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.281
+    },
+    "is_holiday": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.13
+    },
+    "reservations_ahead": {
+      "min": 0.0,
+      "max": 29.0,
+      "mean": 14.307
+    },
+    "avg_service_time_min": {
+      "min": 30.0,
+      "max": 90.0,
+      "mean": 59.972
+    },
+    "weather_score": {
+      "min": 1.0,
+      "max": 5.0,
+      "mean": 2.929
+    },
+    "occupancy_pct": {
+      "min": 0.1,
+      "max": 1.0,
+      "mean": 0.55
+    }
+  }
+}

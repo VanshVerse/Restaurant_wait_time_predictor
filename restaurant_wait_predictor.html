@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TableTime — Restaurant Wait Time Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #0c0a08;
+    --s1:      #151210;
+    --s2:      #1e1a16;
+    --border:  rgba(255,255,255,0.06);
+    --orange:  #ff6b2b;
+    --orange2: #ffaa6b;
+    --cream:   #f5e6d3;
+    --green:   #4ade80;
+    --red:     #f87171;
+    --yellow:  #fbbf24;
+    --text:    #ede8e3;
+    --muted:   #6b5f54;
+    --glow:    rgba(255,107,43,0.2);
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+
+  body {
+    font-family:'Outfit',sans-serif;
+    background:var(--bg); color:var(--text);
+    min-height:100vh; overflow-x:hidden;
+  }
+
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(ellipse 60% 50% at 10% 10%, rgba(255,107,43,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 60% at 90% 90%, rgba(245,230,211,0.04) 0%, transparent 60%);
+  }
+
+  body::after {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .wrap { max-width:1100px; margin:0 auto; padding:0 22px; position:relative; z-index:1; }
+
+  header { padding:40px 0 16px; text-align:center; }
+
+  .badge {
+    display:inline-flex; align-items:center; gap:7px;
+    background:rgba(255,107,43,0.1); border:1px solid rgba(255,107,43,0.25);
+    border-radius:100px; padding:5px 16px;
+    font-size:11px; font-weight:600; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--orange); margin-bottom:18px;
+    animation:fd 0.5s ease both;
+  }
+
+  .bdot { width:6px;height:6px;background:var(--orange);border-radius:50%;animation:pulse 2s infinite; }
+
+  h1 {
+    font-size:clamp(2.2rem,5.5vw,4rem); font-weight:800;
+    letter-spacing:-0.03em; line-height:1.06;
+    animation:fd 0.5s 0.1s ease both;
+  }
+
+  h1 span { color:var(--orange); }
+
+  .sub {
+    margin-top:12px; font-size:1rem; color:var(--muted);
+    font-weight:300; line-height:1.65; max-width:460px;
+    margin-left:auto; margin-right:auto;
+    animation:fd 0.5s 0.2s ease both;
+  }
+
+  .stats {
+    display:flex; justify-content:center; gap:10px;
+    flex-wrap:wrap; margin:28px 0;
+    animation:fd 0.5s 0.3s ease both;
+  }
+
+  .stat {
+    background:var(--s1); border:1px solid var(--border);
+    border-radius:12px; padding:10px 20px; text-align:center;
+  }
+
+  .stat .v { font-family:'JetBrains Mono',monospace; font-size:1.2rem; font-weight:600; color:var(--orange); }
+  .stat .l { font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-top:2px; }
+
+  .grid { display:grid; grid-template-columns:1fr 370px; gap:18px; margin-bottom:55px; animation:fu 0.6s 0.4s ease both; }
+  @media(max-width:780px){ .grid{grid-template-columns:1fr;} }
+
+  .card { background:var(--s1); border:1px solid var(--border); border-radius:20px; padding:26px; }
+
+  .ctitle {
+    font-size:0.72rem; font-weight:600; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:20px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .ctitle::before { content:''; display:block; width:3px; height:13px; background:var(--orange); border-radius:4px; }
+
+  .fgrid { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
+  @media(max-width:500px){ .fgrid{grid-template-columns:1fr;} }
+
+  .field { display:flex; flex-direction:column; gap:6px; }
+
+  .field label {
+    font-size:0.73rem; font-weight:500; color:var(--muted);
+    letter-spacing:0.04em; text-transform:uppercase;
+    display:flex; justify-content:space-between;
+  }
+
+  .field label .hint { color:rgba(107,95,84,0.7); font-weight:400; text-transform:none; letter-spacing:0; }
+
+  .rrow { display:flex; align-items:center; gap:10px; }
+
+  input[type=range] {
+    -webkit-appearance:none; flex:1; height:4px;
+    background:var(--s2); border-radius:4px; outline:none; cursor:pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+    background:var(--orange); border:2px solid var(--bg);
+    box-shadow:0 0 8px var(--glow); cursor:pointer;
+    transition:transform 0.15s, box-shadow 0.15s;
+  }
+
+  input[type=range]::-webkit-slider-thumb:hover { transform:scale(1.3); box-shadow:0 0 16px var(--glow); }
+
+  .rval {
+    font-family:'JetBrains Mono',monospace; font-size:0.9rem;
+    font-weight:600; color:var(--orange); min-width:42px; text-align:right;
+  }
+
+  select, .toggle-row {
+    background:var(--s2); border:1px solid var(--border);
+    border-radius:10px; padding:9px 12px;
+    color:var(--text); font-family:'Outfit',sans-serif;
+    font-size:0.9rem; outline:none; cursor:pointer;
+    transition:border-color 0.2s;
+  }
+
+  select:focus { border-color:var(--orange); }
+
+  .toggle-row { display:flex; gap:0; padding:0; overflow:hidden; }
+
+  .tog {
+    flex:1; padding:9px 8px; text-align:center;
+    font-size:0.82rem; font-weight:500; cursor:pointer;
+    border:none; background:transparent; color:var(--muted);
+    font-family:'Outfit',sans-serif;
+    transition:background 0.2s, color 0.2s;
+  }
+
+  .tog.active { background:var(--orange); color:#0c0a08; font-weight:700; }
+
+  .btn {
+    width:100%; margin-top:20px; padding:15px;
+    background:var(--orange); color:#0c0a08;
+    font-family:'Outfit',sans-serif; font-size:1rem; font-weight:700;
+    letter-spacing:0.03em; border:none; border-radius:14px;
+    cursor:pointer; position:relative; overflow:hidden;
+    transition:transform 0.15s, box-shadow 0.15s;
+  }
+
+  .btn::before {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(135deg,rgba(255,255,255,0.18) 0%,transparent 55%);
+    pointer-events:none;
+  }
+
+  .btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(255,107,43,0.38); }
+  .btn:active { transform:translateY(0); }
+
+  .rcard {
+    background:var(--s1); border:1px solid var(--border);
+    border-radius:20px; padding:26px; text-align:center;
+    transition:border-color 0.4s;
+  }
+
+  .rlabel { font-size:0.68rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+
+  .rval-big {
+    font-family:'JetBrains Mono',monospace; font-size:3.8rem;
+    font-weight:600; line-height:1; color:var(--orange);
+  }
+
+  .runit { font-size:1.3rem; color:var(--muted); }
+  .rverdict { margin-top:10px; font-size:0.95rem; font-weight:500; }
+
+  .wbar-wrap { margin-top:18px; }
+  .wbar-bg { background:var(--s2); border-radius:8px; height:8px; overflow:hidden; }
+  .wbar-fill { height:100%; border-radius:8px; transition:width 0.8s cubic-bezier(.4,0,.2,1); }
+  .wbar-labels { display:flex; justify-content:space-between; font-size:0.68rem; color:var(--muted); margin-top:5px; }
+
+  .crow { display:grid; grid-template-columns:130px 1fr 52px; align-items:center; gap:9px; margin-bottom:9px; }
+  .cname { font-size:0.73rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cbg { background:var(--s2); border-radius:4px; height:5px; overflow:hidden; }
+  .cfill { height:100%; border-radius:4px; transition:width 0.7s cubic-bezier(.4,0,.2,1); }
+  .cval { font-family:'JetBrains Mono',monospace; font-size:0.72rem; font-weight:600; text-align:right; }
+
+  .mgrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .mcell { background:var(--s2); border-radius:12px; padding:14px 12px; text-align:center; }
+  .mcell .mn { font-family:'JetBrains Mono',monospace; font-size:1.45rem; font-weight:600; color:var(--orange); line-height:1; }
+  .mcell .ml { font-size:0.65rem; color:var(--muted); margin-top:4px; text-transform:uppercase; letter-spacing:0.05em; }
+
+  #clockCanvas { border-radius:12px; margin-top:14px; display:none; }
+
+  .placeholder { color:var(--muted); font-size:0.88rem; text-align:center; padding:26px 10px; line-height:1.65; }
+  .ph-icon { font-size:2.4rem; margin-bottom:8px; opacity:0.3; }
+
+  @keyframes fd { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fu { from{opacity:0;transform:translateY(18px)}  to{opacity:1;transform:translateY(0)} }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+  .footer {
+    text-align:center; font-size:0.72rem; color:rgba(107,95,84,0.45);
+    padding:0 20px 40px; line-height:1.7; position:relative; z-index:1;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="badge"><div class="bdot"></div>Linear Regression · Restaurant Ops Dataset · 1200 Records</div>
+    <h1>Table<span>Time</span></h1>
+    <p class="sub">Predict how long you'll wait at a restaurant using a trained Linear Regression ML model.</p>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="v">81.1%</div><div class="l">R² Score</div></div>
+    <div class="stat"><div class="v">1.7 min</div><div class="l">Mean Abs Error</div></div>
+    <div class="stat"><div class="v">85.4%</div><div class="l">5-Fold CV R²</div></div>
+    <div class="stat"><div class="v">1200</div><div class="l">Training Records</div></div>
+    <div class="stat"><div class="v">11</div><div class="l">Features</div></div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="ctitle">Restaurant Conditions</div>
+      <div class="fgrid">
+
+        <div class="field" style="grid-column:1/-1">
+          <label>Day of Week</label>
+          <select id="dow">
+            <option value="0">Monday</option>
+            <option value="1">Tuesday</option>
+            <option value="2">Wednesday</option>
+            <option value="3">Thursday</option>
+            <option value="4">Friday</option>
+            <option value="5" selected>Saturday</option>
+            <option value="6">Sunday</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Hour of Day <span class="hint">24hr</span></label>
+          <div class="rrow">
+            <input type="range" id="hour" min="10" max="22" value="19" oninput="sync('hour','hv')">
+            <span class="rval" id="hv">19:00</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Party Size <span class="hint">people</span></label>
+          <div class="rrow">
+            <input type="range" id="party" min="1" max="10" value="4" oninput="sync('party','pv')">
+            <span class="rval" id="pv">4</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Tables Occupied <span class="hint">of 50</span></label>
+          <div class="rrow">
+            <input type="range" id="tables" min="5" max="50" value="35" oninput="sync('tables','tv')">
+            <span class="rval" id="tv">35</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Staff on Duty <span class="hint">count</span></label>
+          <div class="rrow">
+            <input type="range" id="staff" min="3" max="15" value="8" oninput="sync('staff','stv')">
+            <span class="rval" id="stv">8</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Queue Ahead <span class="hint">groups</span></label>
+          <div class="rrow">
+            <input type="range" id="queue" min="0" max="29" value="10" oninput="sync('queue','qv')">
+            <span class="rval" id="qv">10</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Avg Service Time <span class="hint">min</span></label>
+          <div class="rrow">
+            <input type="range" id="svctime" min="30" max="90" value="55" oninput="sync('svctime','sv2')">
+            <span class="rval" id="sv2">55</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Weather Score <span class="hint">1–5</span></label>
+          <div class="rrow">
+            <input type="range" id="weather" min="1" max="5" value="3" oninput="sync('weather','wv')">
+            <span class="rval" id="wv">3 ⛅</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Weekend?</label>
+          <div class="toggle-row">
+            <button class="tog" onclick="setToggle('wknd',0,this)">Weekday</button>
+            <button class="tog active" onclick="setToggle('wknd',1,this)">Weekend</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Holiday?</label>
+          <div class="toggle-row">
+            <button class="tog active" onclick="setToggle('hol',0,this)">No</button>
+            <button class="tog" onclick="setToggle('hol',1,this)">Yes</button>
+          </div>
+        </div>
+
+      </div>
+      <button class="btn" onclick="predict(event)">🍽️ Predict Wait Time</button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <div class="rcard" id="rcard">
+        <div class="rlabel">Estimated Wait Time</div>
+        <div class="rval-big" id="rvalBig">—<span class="runit"> min</span></div>
+        <div class="rverdict" id="rverdict">
+          <div class="ph-icon">🍽️</div>
+          <div class="placeholder">Set restaurant conditions and click Predict to estimate wait time.</div>
+        </div>
+        <div class="wbar-wrap" id="wbarWrap" style="display:none">
+          <div class="wbar-bg"><div class="wbar-fill" id="wbarFill"></div></div>
+          <div class="wbar-labels">
+            <span>0 min</span><span>7</span><span>13</span><span>19</span><span>25 min</span>
+          </div>
+        </div>
+        <canvas id="clockCanvas" width="300" height="70"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">Feature Importance</div>
+        <div id="coefChart"></div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">Model Performance</div>
+        <div class="mgrid">
+          <div class="mcell"><div class="mn">81.1%</div><div class="ml">R² Score</div></div>
+          <div class="mcell"><div class="mn">85.4%</div><div class="ml">5-Fold CV R²</div></div>
+          <div class="mcell"><div class="mn">1.7m</div><div class="ml">Mean Abs Error</div></div>
+          <div class="mcell"><div class="mn">2.1m</div><div class="ml">RMSE</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<p class="footer">
+  🍴 Built on Restaurant Operations Dataset · Linear Regression · Scikit-learn<br>
+  1200 training records · 11 features · Max wait: 25 minutes · For educational purposes only
+</p>
+
+<script>
+const MODEL = {
+  intercept: 17.048437,
+  coef: {
+    day_of_week:          -0.064316,
+    hour_of_day:           0.358392,
+    party_size:            2.013957,
+    tables_occupied:       1.252643,
+    staff_on_duty:        -1.493730,
+    is_weekend:            1.295568,
+    is_holiday:            0.651139,
+    reservations_ahead:    2.547523,
+    avg_service_time_min:  0.797959,
+    weather_score:         0.669012,
+    occupancy_pct:         1.252643
+  },
+  mean: {
+    day_of_week:           2.94375,
+    hour_of_day:          16.01875,
+    party_size:            5.517708,
+    tables_occupied:      27.304167,
+    staff_on_duty:         9.192708,
+    is_weekend:            0.279167,
+    is_holiday:            0.127083,
+    reservations_ahead:   14.413542,
+    avg_service_time_min: 59.645625,
+    weather_score:         2.926042,
+    occupancy_pct:         0.546083
+  },
+  std: {
+    day_of_week:           2.012193,
+    hour_of_day:           3.783691,
+    party_size:            2.842699,
+    tables_occupied:      13.250518,
+    staff_on_duty:         3.732647,
+    is_weekend:            0.448590,
+    is_holiday:            0.333066,
+    reservations_ahead:    8.688883,
+    avg_service_time_min: 17.346223,
+    weather_score:         1.453354,
+    occupancy_pct:         0.265010
+  }
+};
+
+const LABELS = {
+  reservations_ahead:   'Queue Ahead',
+  party_size:           'Party Size',
+  staff_on_duty:        'Staff on Duty',
+  tables_occupied:      'Tables Occupied',
+  occupancy_pct:        'Occupancy %',
+  is_weekend:           'Is Weekend',
+  avg_service_time_min: 'Avg Service Time',
+  weather_score:        'Weather Score',
+  is_holiday:           'Is Holiday',
+  hour_of_day:          'Hour of Day',
+  day_of_week:          'Day of Week'
+};
+
+const WEATHER_ICONS = ['','☁️','🌥️','⛅','🌤️','☀️'];
+const toggleState = { wknd: 1, hol: 0 };
+
+function setToggle(key, val, btn) {
+  toggleState[key] = val;
+  btn.parentElement.querySelectorAll('.tog').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function sync(id, vid) {
+  const v = parseFloat(document.getElementById(id).value);
+  const el = document.getElementById(vid);
+  if(id === 'hour')        el.textContent = `${Math.round(v)}:00`;
+  else if(id === 'weather') el.textContent = `${v} ${WEATHER_ICONS[v]||''}`;
+  else                      el.textContent = Math.round(v);
+}
+
+function buildChart() {
+  const coefs  = MODEL.coef;
+  const maxAbs = Math.max(...Object.values(coefs).map(Math.abs));
+  const sorted = Object.entries(coefs).sort((a,b) => Math.abs(b[1]) - Math.abs(a[1]));
+  document.getElementById('coefChart').innerHTML = sorted.map(([feat, val]) => {
+    const pct  = (Math.abs(val) / maxAbs * 100).toFixed(1);
+    const col  = val >= 0 ? '#ff6b2b' : '#4ade80';
+    const sign = val >= 0 ? '+' : '';
+    return `
+      <div class="crow">
+        <span class="cname">${LABELS[feat]||feat}</span>
+        <div class="cbg"><div class="cfill" style="width:${pct}%;background:${col}"></div></div>
+        <span class="cval" style="color:${col}">${sign}${val.toFixed(2)}</span>
+      </div>`;
+  }).join('');
+}
+
+function drawClock(waitMin) {
+  const canvas = document.getElementById('clockCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const hour = parseInt(document.getElementById('hour').value);
+  const total = hour * 60 + waitMin;
+  const eH = Math.floor(total/60) % 24;
+  const eM = Math.round(total % 60);
+  const pad = n => String(n).padStart(2,'0');
+
+  ctx.fillStyle='rgba(255,255,255,0.04)';
+  ctx.roundRect(10,10,W-20,H-20,8); ctx.fill();
+
+  ctx.fillStyle='rgba(107,95,84,0.7)'; ctx.font='11px Outfit,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('Arrive', W*0.28, 32);
+  ctx.fillText('Seated', W*0.72, 32);
+
+  ctx.fillStyle='#ff6b2b'; ctx.font='bold 22px JetBrains Mono,monospace';
+  ctx.fillText(`${pad(hour)}:00`, W*0.28, 58);
+
+  ctx.fillStyle='#ede8e3';
+  ctx.fillText(`${pad(eH)}:${pad(eM)}`, W*0.72, 58);
+
+  ctx.strokeStyle='rgba(255,107,43,0.5)'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(W*0.42,48); ctx.lineTo(W*0.58,48); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,107,43,0.5)';
+  ctx.beginPath(); ctx.moveTo(W*0.585,44); ctx.lineTo(W*0.60,48); ctx.lineTo(W*0.585,52); ctx.fill();
+}
+
+function predict(e) {
+  const btn = e.currentTarget;
+  const rip = document.createElement('span');
+  rip.style.cssText=`position:absolute;border-radius:50%;background:rgba(255,255,255,0.2);
+    width:50px;height:50px;left:${e.offsetX-25}px;top:${e.offsetY-25}px;
+    pointer-events:none;transition:transform 0.5s,opacity 0.5s;transform:scale(0);opacity:0.7;`;
+  btn.appendChild(rip);
+  requestAnimationFrame(()=>{ rip.style.transform='scale(5)'; rip.style.opacity='0'; });
+  setTimeout(()=>rip.remove(), 600);
+
+  const tables = +document.getElementById('tables').value;
+  const raw = {
+    day_of_week:          +document.getElementById('dow').value,
+    hour_of_day:          +document.getElementById('hour').value,
+    party_size:           +document.getElementById('party').value,
+    tables_occupied:      tables,
+    staff_on_duty:        +document.getElementById('staff').value,
+    is_weekend:           toggleState.wknd,
+    is_holiday:           toggleState.hol,
+    reservations_ahead:   +document.getElementById('queue').value,
+    avg_service_time_min: +document.getElementById('svctime').value,
+    weather_score:        +document.getElementById('weather').value,
+    occupancy_pct:        tables / 50,
+  };
+
+  let y = MODEL.intercept;
+  for(const [feat, val] of Object.entries(raw)) {
+    y += ((val - MODEL.mean[feat]) / MODEL.std[feat]) * MODEL.coef[feat];
+  }
+  const wait = Math.min(25, Math.max(1, Math.round(y)));
+
+  const rvalBig  = document.getElementById('rvalBig');
+  const rverdict = document.getElementById('rverdict');
+  const wbarWrap = document.getElementById('wbarWrap');
+  const wbarFill = document.getElementById('wbarFill');
+  const rcard    = document.getElementById('rcard');
+  const canvas   = document.getElementById('clockCanvas');
+
+  animCount(rvalBig, wait);
+
+  let verdict, col;
+  if(wait <= 8)       { verdict='✅ Very short wait — walk right in!';       col='#4ade80'; }
+  else if(wait <= 15) { verdict='🟡 Moderate wait — grab a drink nearby.';  col='#fbbf24'; }
+  else if(wait <= 20) { verdict='🟠 Longer wait — consider a reservation.'; col='#fb923c'; }
+  else                { verdict='🔴 Peak time — try visiting off-peak!';     col='#f87171'; }
+
+  rverdict.style.color = col;
+  rverdict.textContent = verdict;
+  rcard.style.borderColor = col + '55';
+  rvalBig.style.color = col;
+
+  wbarWrap.style.display = 'block';
+  wbarFill.style.width   = Math.min(wait / 25 * 100, 100) + '%';
+  wbarFill.style.background = col;
+
+  canvas.style.display = 'block';
+  drawClock(wait);
+}
+
+function animCount(el, target) {
+  const dur = 700, step = 16; let t = 0;
+  const timer = setInterval(() => {
+    t += step;
+    const v = Math.round(target * (1 - Math.pow(1 - Math.min(t/dur,1), 3)));
+    el.innerHTML = v + '<span class="runit"> min</span>';
+    if(t >= dur) { el.innerHTML = target + '<span class="runit"> min</span>'; clearInterval(timer); }
+  }, step);
+}
+
+buildChart();
+</script>
+</body>
+</html>
